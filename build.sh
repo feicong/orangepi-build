@@ -12,6 +12,7 @@
 #  http://www.orangepi.cn/downloadresourcescn
 #  http://www.orangepi.org/downloadresources
 
+# export https_proxy=http://192.168.0.120:7890 http_proxy=http://192.168.0.120:7890 all_proxy=socks5://192.168.0.120:7890
 SRC="$(dirname "$(realpath "${BASH_SOURCE[0]}")")"
 
 # check for whitespace in ${SRC} and exit for safety reasons
