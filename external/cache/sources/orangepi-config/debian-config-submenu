@@ -109,14 +109,15 @@ while true; do
 	fi
 
 	# overlayroot
-	if [[ "$DISTRO" == "Ubuntu" && "$(modinfo overlay > /dev/null 2>&1; echo $?)" == "0" ]]; then
-		if [ -n "$(mount | grep -w tmpfs-root)" ]; then
-			:
-			#LIST+=( "Overlayroot" "Disable virtual read-only root filesystem" )
-		else
-			:
-			#LIST+=( "Overlayroot" "Enable virtual read-only root filesystem" )
-		fi
+	if [[ "$DISTRO" =~ "Ubuntu"|"Debian" && "$(modinfo overlay > /dev/null 2>&1; echo $?)" == "0" ]]; then
+		#if [ -n "$(mount | grep -w tmpfs-root)" ]; then
+		#	:
+		#	#LIST+=( "Overlayroot" "Disable virtual read-only root filesystem" )
+		#else
+		#	:
+		#	#LIST+=( "Overlayroot" "Enable virtual read-only root filesystem" )
+		#fi
+		LIST+=( "Overlayroot" "Enable or disable a overlay filesystem." )
 	fi
 
 	# count number of menu items to adjust window size

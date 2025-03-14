@@ -1554,25 +1554,200 @@ function jobs ()
 	# Toggle virtual read-only root filesystem
 	#
 	"Overlayroot" )
-		if ! is_package_manager_running; then
-			if [[ -n $(mount | grep -w overlay | grep -v chromium) ]]; then
-				dialog --title " Root overlay " --backtitle "$BACKTITLE" --yes-label "Disable" \
-				--no-label "Cancel" \
-				--yesno "\nYour system is already virtual read-only.\n\nDo you want to disable this feature and reboot?" 9 60
-				[[ $? = 0 ]] && overlayroot-chroot sed -i "s/^overlayroot=.*/overlayroot=\"\"/" /etc/overlayroot.conf && \
-				overlayroot-chroot rm /etc/update-motd.d/97-overlayroot && reboot
+		#if ! is_package_manager_running; then
+		#	if [[ -n $(mount | grep -w overlay | grep -v chromium) ]]; then
+		#		dialog --title " Root overlay " --backtitle "$BACKTITLE" --yes-label "Disable" \
+		#		--no-label "Cancel" \
+		#		--yesno "\nYour system is already virtual read-only.\n\nDo you want to disable this feature and reboot?" 9 60
+		#		[[ $? = 0 ]] && overlayroot-chroot sed -i "s/^overlayroot=.*/overlayroot=\"\"/" /etc/overlayroot.conf && \
+		#		overlayroot-chroot rm /etc/update-motd.d/97-overlayroot && reboot
+		#	else
+		#		debconf-apt-progress -- apt-get -o Dpkg::Options::="--force-confnew" -y --no-install-recommends install overlayroot
+		#		echo '#!/bin/bash' > /etc/update-motd.d/97-overlayroot
+		#		echo 'if [ -n "$(mount | grep -w tmpfs-root)" ]; then \
+		#		echo -e "[\e[0m \e[1mremember: your system is in virtual read only mode\e[0m ]\n";fi' >> /etc/update-motd.d/97-overlayroot
+		#		chmod +x /etc/update-motd.d/97-overlayroot
+		#		dialog --title "Root overlay" --backtitle "$BACKTITLE" --yes-label "Reboot" \
+		#		--no-label "Cancel" --yesno "\nEnable virtual read-only root and reboot." 7 45
+		#		[[ ! -f /etc/overlayroot.conf ]] && cp /etc/overlayroot.conf.dpkg-new /etc/overlayroot.conf
+		#		[[ $? = 0 ]] && sed -i "s/^overlayroot=.*/overlayroot=\"tmpfs\"/" /etc/overlayroot.conf && reboot
+		#	fi
+		#fi
+
+		CONFIG_FILE="/etc/overlayroot.conf"
+
+		if findmnt -n -o SOURCE / | grep -q "overlayroot"; then
+			CONFIG_FILE="/media/root-ro/etc/overlayroot.conf"
+			OVERLAY_ACTIVE=1
+		else
+			if ! is_package_manager_running; then
+				if ! dpkg -l | grep -q "overlayroot"; then
+					debconf-apt-progress -- apt-get update
+					if [[ "$DISTROID" == "bookworm" ]]; then
+						cat <<-'EOF' > /usr/share/initramfs-tools/hooks/custom
+						cp /bin/grep "${DESTDIR}"/bin
+						cp /bin/mount "${DESTDIR}"/bin
+						cp /lib/aarch64-linux-gnu/libmount.so.1 "${DESTDIR}"/lib
+						EOF
+						chmod +x /usr/share/initramfs-tools/hooks/custom
+						export PATH=$PATH:/usr/sbin
+						update-initramfs -u > /dev/null 2>&1
+					fi
+					apt -y install overlayroot > /dev/null 2>&1
+					[[ ! $? == 0 ]] && apt remove --purge -y overlayroot >/dev/null 2>&1 && return
+				fi
 			else
-				debconf-apt-progress -- apt-get -o Dpkg::Options::="--force-confnew" -y --no-install-recommends install overlayroot
-				echo '#!/bin/bash' > /etc/update-motd.d/97-overlayroot
-				echo 'if [ -n "$(mount | grep -w tmpfs-root)" ]; then \
-				echo -e "[\e[0m \e[1mremember: your system is in virtual read only mode\e[0m ]\n";fi' >> /etc/update-motd.d/97-overlayroot
-				chmod +x /etc/update-motd.d/97-overlayroot
-				dialog --title "Root overlay" --backtitle "$BACKTITLE" --yes-label "Reboot" \
-				--no-label "Cancel" --yesno "\nEnable virtual read-only root and reboot." 7 45
-				[[ ! -f /etc/overlayroot.conf ]] && cp /etc/overlayroot.conf.dpkg-new /etc/overlayroot.conf
-				[[ $? = 0 ]] && sed -i "s/^overlayroot=.*/overlayroot=\"tmpfs\"/" /etc/overlayroot.conf && reboot
+				return
 			fi
+
+			OVERLAY_ACTIVE=0
 		fi
+
+		CURRENT_MODE="none"
+		CURRENT_DEVICE="N/A"
+
+		if grep -q '^overlayroot="tmpfs"' "$CONFIG_FILE" 2>/dev/null; then
+			CURRENT_MODE="tmpfs"
+		elif grep -q '^overlayroot="device:dev=' "$CONFIG_FILE" 2>/dev/null; then
+			CURRENT_MODE="block"
+			CURRENT_DEVICE=$(grep -oP '(?<=overlayroot="device:dev=).*?(?=")' "$CONFIG_FILE")
+		elif grep -q '^overlayroot=""' "$CONFIG_FILE" 2>/dev/null; then
+			CURRENT_MODE="none"
+		fi
+
+		ALL_PARTITIONS=$(lsblk -lnp -o NAME,TYPE | awk '$2=="part" {print $1}' | grep -E '/dev/(mmcblk|nvme|sd)')
+		MOUNTED_PARTITIONS=$(findmnt -n -o SOURCE)
+		ROOT_SOURCE=$(findmnt -n -o SOURCE /)
+		[[ $OVERLAY_ACTIVE == "1" ]] && ROOT_SOURCE=$(findmnt -n -o SOURCE /media/root-ro)
+		ROOT_DEVICE=${ROOT_SOURCE%%p*}
+		ROOT_PARTITION=${ROOT_SOURCE##*p}
+		MENU_OPTIONS=()
+		for PART in $ALL_PARTITIONS; do
+			if ! grep -q "$PART" <<< "$MOUNTED_PARTITIONS"; then
+				DEVICE_NAME=$(echo "$PART" | sed -E 's/p[0-9]+$//')
+				PARTITION_NUMBER=$(echo "$PART" | grep -o '[0-9]*$')
+
+				if [[ "$DEVICE_NAME" == "$ROOT_DEVICE" && "$PARTITION_NUMBER" -gt "$ROOT_PARTITION" ]]; then
+					MENU_OPTIONS+=("$PART" "Available partition")
+				elif [[ "$DEVICE_NAME" != "$ROOT_DEVICE" ]]; then
+					MENU_OPTIONS+=("$PART" "Available partition")
+				fi
+			fi
+		done
+
+		NEW_PART="${ROOT_DEVICE}p$((ROOT_PARTITION + 1))"
+		if ! grep -q "$NEW_PART" <<< "$ALL_PARTITIONS"; then
+			MENU_OPTIONS+=("$NEW_PART" "Potential new partition (p$((ROOT_PARTITION + 1)))")
+		fi
+
+		MENU_ITEMS=(
+			"none"  "disable overlayroot $( [ "$CURRENT_MODE" = "none" ] && echo "(active)" )"
+			"tmpfs" "tmpfs mode $( [ "$CURRENT_MODE" = "tmpfs" ] && echo "(active)" )"
+			"block" "block device mode $( [ "$CURRENT_MODE" = "block" ] && echo "(active: $CURRENT_DEVICE)" )"
+		)
+		CHOICE=$(dialog --clear --title "Overlayroot Configuration" --default-item "$CURRENT_MODE" \
+			--menu "\nChoose the storage mode:" 12 60 3 "${MENU_ITEMS[@]}" 3>&1 1>&2 2>&3)
+
+		clear
+
+		if [ "$OVERLAY_ACTIVE" -eq 1 ]; then
+			#echo "Remounting /media/root-ro as read-write..."
+			mount -o remount,rw /media/root-ro
+		fi
+
+		case "$CHOICE" in
+			"none")
+				sed -i "s/^overlayroot=.*/overlayroot=\"\"/" "$CONFIG_FILE"
+				if ! grep -q "overlayroot" "$CONFIG_FILE"; then echo "overlayroot=\"\"" >> "$CONFIG_FILE"; fi
+				dialog --title "Root overlay" --backtitle "$BACKTITLE" --yes-label "Reboot" \
+					--no-label "Cancel" --yesno "\nDisable overlayroot and reboot." 7 45
+				[[ $? == 0 ]] && reboot
+				;;
+			"tmpfs")
+				sed -i "s/^overlayroot=.*/overlayroot=\"$CHOICE\"/" "$CONFIG_FILE"
+				if ! grep -q "overlayroot" "$CONFIG_FILE"; then echo "overlayroot=$CHOICE" >> "$CONFIG_FILE"; fi
+				dialog --title "Root overlay" --backtitle "$BACKTITLE" --yes-label "Reboot" \
+					--no-label "Cancel" --yesno "\nEnable overlayroot and reboot." 7 45
+				[[ $? == 0 ]] && reboot
+				;;
+			"block")
+				if [ ${#MENU_OPTIONS[@]} -eq 0 ]; then
+					DEVICE=$(dialog --inputbox "No available partitions detected.\nEnter a block device path manually:" 10 50 "/dev/mmcblk0p2" 3>&1 1>&2 2>&3)
+				else
+					DEVICE=$(dialog --menu "Select a block device for storage:" 10 60 5 "${MENU_OPTIONS[@]}" 3>&1 1>&2 2>&3)
+				fi
+				clear
+				if [ -n "$DEVICE" ]; then
+					sed -i "s|^overlayroot=.*|overlayroot=\"device:dev=$DEVICE\"|" "$CONFIG_FILE"
+					if ! grep -q "overlayroot" "$CONFIG_FILE"; then echo "overlayroot=\"device:dev=$DEVICE\"" >> "$CONFIG_FILE"; fi
+					sync
+					#echo "Overlayroot set to block device mode using $DEVICE."
+
+					if [ "$DEVICE" = "$NEW_PART" ]; then
+
+						if [[ -b "$DEVICE" ]]; then
+							if [[ "$(lsblk -no FSTYPE $DEVICE)" != "ext4" ]]; then
+								dialog --yesno "Warning: format $DEVICE as ext4? This will erase all data." 10 50
+								[[ $? -eq 0 ]] && yes|mkfs.ext4 "$DEVICE"
+								dialog --title "Root overlay" --backtitle "$BACKTITLE" --yes-label "Reboot" \
+									--no-label "Cancel" --yesno "\nEnable overlayroot and reboot." 7 45
+								[[ $? == 0 ]] && reboot
+							else
+								dialog --title "Root overlay" --backtitle "$BACKTITLE" --yes-label "Reboot" \
+									--no-label "Cancel" --yesno "\nEnable overlayroot and reboot." 7 45
+								[[ $? == 0 ]] && reboot
+							fi
+							return
+						fi
+
+						dialog --yesno "Warning: Creating a new partition ($DEVICE) may destroy existing data." 10 50
+						[[ ! $? -eq 0 ]] && return
+						rootfs_size=$(df -BM | grep ^/dev | head -1 | awk '{print $3}' | tr -cd '[0-9]. \n')
+						sdsize=$(bc -l <<< "scale=0; ((($rootfs_size * 2) / 1 + 0) / 4 + 1) * 4")
+						#echo "sdsize: $sdsize"
+						rootsource=$ROOT_SOURCE
+						rootdevice=${rootsource%p*}
+						partitions=${rootsource##*p}
+						lastsector=$(fdisk -l ${rootdevice} |grep "Disk ${rootdevice}" |awk '{print $7}')
+						lastsector=$(( $lastsector - 1024 ))
+						startfrom=$(fdisk -l ${rootdevice} |grep ${rootsource} |awk '{print $2}')
+						partend=$(fdisk -l ${rootdevice} |grep ${rootsource} |awk '{print $3}')
+						new_part_size=$(($sdsize * 1024 * 1024 / 512))
+						new_partend=$((${new_part_size} + ${startfrom} -1))
+						new_partstart=$((${new_partend}+1))
+						LOOP=$(losetup -f)
+						losetup ${LOOP} ${rootsource}
+						e2fsck -f -y ${LOOP}
+						resize2fs ${LOOP} $((${new_part_size} / 8))
+						(echo d; echo $partitions; echo n; echo p; echo ; echo $startfrom; echo $new_partend ; echo w;)| fdisk $rootdevice
+						(echo n; echo p; echo ;echo $new_partstart; echo $lastsector; echo w;)| fdisk $rootdevice
+						e2fsck -f -y ${LOOP}
+						yes |mkfs.ext4 $DEVICE
+						sync
+						losetup -d ${LOOP}
+						dialog --title "Root overlay" --backtitle "$BACKTITLE" --yes-label "Reboot" \
+							--no-label "Cancel" --yesno "\nEnable overlayroot and reboot." 7 45
+						[[ $? == 0 ]] && reboot
+
+					else
+						#if [[ "$(lsblk -no FSTYPE /dev/sda2)" != "ext4" ]]; then
+						dialog --yesno "Warning: format $DEVICE as ext4? This will erase all data." 10 50
+						[[ $? -eq 0 ]] && yes|mkfs.ext4 "$DEVICE"
+						dialog --title "Root overlay" --backtitle "$BACKTITLE" --yes-label "Reboot" \
+							--no-label "Cancel" --yesno "\nEnable overlayroot and reboot." 7 45
+						[[ $? == 0 ]] && reboot
+						#fi
+					fi
+
+				else
+					:
+				fi
+				;;
+			*)
+				:
+				;;
+		esac
+		sync
 	;;
 
 
