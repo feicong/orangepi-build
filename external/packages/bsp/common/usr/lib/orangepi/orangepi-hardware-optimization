@@ -356,6 +356,8 @@ prepare_board() {
 			;;
 		orangepi4a)
 			echo usb_host > /sys/devices/platform/soc@3000000/10.usbc0/otg_role
+			echo 4 1 > /sys/devices/platform/soc@3000000/2020000.nsi-controller/nsi-pmu/hwmon0/port_abs_bwlen
+			echo 4 400 > /sys/devices/platform/soc@3000000/2020000.nsi-controller/nsi-pmu/hwmon0/port_abs_bwl
 			chmod 666 /dev/vipcore
 			tinymix -D 0 23 1
 			tinymix -D 0 26 1

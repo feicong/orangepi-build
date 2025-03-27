@@ -91,7 +91,7 @@ sdsize=$(bc -l <<< "scale=0; ((($imagesize * 1.35) / 1 + 0) / 4 + 1) * 4")
 
 mnt_free=$(df -BM /mnt | grep ^/dev | head -1 | awk '{print $4}' | tr -cd '[0-9]. \n')
 
-if [ "$mnt_free" -lt "$sdsize" ]; then
+if [[ "$mnt_free" -lt "$sdsize" ]]; then
 	display_alert "Not enough space in /mnt" "Required: ${sdsize}MiB, Available: ${mnt_free}MiB" "err"
 	exit 1
 fi
@@ -120,13 +120,7 @@ display_alert "Creating partitions" "${bootfs:+/boot: $bootfs }root: $ROOTFS_TYP
 	echo "$rootpart : name=\"rootfs\", start=${next}MiB, type=${type}"
 } | sfdisk $image >> "$logfile" 2>&1
 
-LOOP=$(losetup -f)
-[[ -z $LOOP ]] && echo "error" && exit
-
-losetup $LOOP $image
-
-partprobe $LOOP
-
+LOOP=$(losetup -fP --show $image)
 rootdevice="${LOOP}p${rootpart}"
 
 display_alert "Creating rootfs" "$ROOTFS_TYPE on $rootdevice"
