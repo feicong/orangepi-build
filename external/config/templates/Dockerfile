@@ -1,4 +1,4 @@
-FROM ubuntu:21.04
+FROM ubuntu:22.04
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get -y install \
        joe \
@@ -45,7 +45,6 @@ RUN apt-get update \
        f2fs-tools \
        fakeroot \
        flex \
-       g++-8-arm-linux-gnueabihf \
        gawk \
        gcc-arm-linux-gnueabihf \
        gcc-arm-linux-gnueabi \
@@ -113,6 +112,8 @@ RUN apt-get update \
        zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN locale-gen en_US.UTF-8
+
+RUN git config --system --add safe.directory /root/orangepi
 
 # Static port for NFSv3 server used for USB FEL boot
 RUN sed -i 's/\(^STATDOPTS=\).*/\1"--port 32765 --outgoing-port 32766"/' /etc/default/nfs-common \
