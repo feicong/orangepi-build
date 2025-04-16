@@ -1936,7 +1936,6 @@ install_docker() {
 	chroot "${SDCARD}" /bin/bash -c "apt-get update"
 	chroot "${SDCARD}" /bin/bash -c "apt-get install -y -qq docker-ce docker-ce-cli containerd.io"
 	chroot "${SDCARD}" /bin/bash -c "sudo groupadd docker"
-	chroot "${SDCARD}" /bin/bash -c "sudo usermod -aG docker ${OPI_USERNAME}"
 
 	run_on_sdcard "systemctl --no-reload disable docker.service"
 }

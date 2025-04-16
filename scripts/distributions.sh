@@ -426,7 +426,7 @@ POST_INSTALL_KERNEL_DEBS
 	# add orangepi user
 	chroot "${SDCARD}" /bin/bash -c "adduser --quiet --disabled-password --shell /bin/bash --home /home/${OPI_USERNAME} --gecos ${OPI_USERNAME} ${OPI_USERNAME}"
 	chroot "${SDCARD}" /bin/bash -c "(echo ${OPI_PWD};echo ${OPI_PWD};) | passwd "${OPI_USERNAME}" >/dev/null 2>&1"
-	for additionalgroup in sudo netdev audio video disk tty users games dialout plugdev input bluetooth systemd-journal ssh; do
+	for additionalgroup in sudo netdev audio video disk tty users games dialout plugdev input bluetooth systemd-journal ssh docker; do
 	        chroot "${SDCARD}" /bin/bash -c "usermod -aG ${additionalgroup} ${OPI_USERNAME} 2>/dev/null"
 	done
 
