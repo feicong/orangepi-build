@@ -32,14 +32,44 @@ jobs:
         rm -rf /opt/hostedtoolcache
         cd /opt
         find . -maxdepth 1 -mindepth 1 '!' -path ./containerd '!' -path ./actionarchivecache '!' -path ./runner '!' -path ./runner-cache -exec rm -rf '{}' ';'
-
-    - name: Run build script
+        
+    # 创建overlay目录结构
+    - name: Prepare cloud-init overlay
       run: |
-        # sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=kernel KERNEL_CONFIGURE=no
-        sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=image RELEASE=jammy BUILD_MINIMAL=no BUILD_DESKTOP=yes DESKTOP_ENVIRONMENT=gnome DESKTOP_ENVIRONMENT_CONFIG_NAME=base DESKTOP_APPGROUPS_SELECTED=""  KERNEL_CONFIGURE=no
+        if [ -d userpatches/overlay ]; then
+          echo "Overlay directory already exists"
+          ls -la userpatches/overlay/
+        else
+          echo "Creating overlay directory structure"
+          mkdir -p userpatches/overlay/etc/cloud/cloud.cfg.d/
+        fi
+        
+        # 为CI环境使用专门的配置
+        echo "CUSTOM_SCRIPT=\"userpatches/customize-image-ci.sh\"" >> userpatches/config-default.conf
+        
+    # 首先只构建桌面包
+    - name: Build desktop package
+      run: |
+        # 确保使用非交互模式
+        export DEBIAN_FRONTEND=noninteractive
+        
+        # 先只构建桌面环境包
+        sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=desktop KERNEL_CONFIGURE=no RELEASE=jammy DESKTOP_ENVIRONMENT=gnome DESKTOP_ENVIRONMENT_CONFIG_NAME=base DESKTOP_APPGROUPS_SELECTED="" EXPECT_PARAMS="-v -f"
+        
+        # 检查生成的包
+        ls -la output/debs/jammy/ || true
+
+    # 然后构建完整镜像
+    - name: Build full image
+      run: |
+        # 确保使用非交互模式
+        export DEBIAN_FRONTEND=noninteractive
+        
+        # 构建完整镜像
+        sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=image RELEASE=jammy BUILD_MINIMAL=no BUILD_DESKTOP=yes DESKTOP_ENVIRONMENT=gnome DESKTOP_ENVIRONMENT_CONFIG_NAME=base DESKTOP_APPGROUPS_SELECTED="" KERNEL_CONFIGURE=no EXPECT_PARAMS="-v -f"
+        
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: kernel-build-artifacts
-        # path: ./output/debs/
         path: ./output/images/

@@ -1,0 +1,3 @@
+# 桌面环境配置
+PACKAGE_LIST_DESKTOP="gnome-session gnome-shell gnome-control-center gnome-terminal nautilus gdm3"
+PACKAGE_LIST_DESKTOP_FULL="gnome-tweaks network-manager-gnome gedit" 
