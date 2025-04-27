@@ -1,0 +1,176 @@
+#cloud-config
+hostname: ubuntu-vm
+timezone: Asia/Shanghai
+locale: zh_CN.UTF-8
+
+# 系统初始化配置
+bootcmd:
+  - echo "[Info] System initialization starting..."
+  # 禁用不需要的服务
+  - systemctl disable apt-daily.timer
+  - systemctl disable apt-daily-upgrade.timer
+  - systemctl mask apt-daily.service
+  - systemctl mask apt-daily-upgrade.service
+
+# 用户配置
+users:
+  - name: android
+    # orb python3 -c 'import crypt,getpass;pw=getpass.getpass();print(crypt.crypt(pw))'
+    passwd: $6$HWyBGqn6GTNqXXGI$A90KD8QHDB9mX.PXCDFhWMk./xzpa4Nxtxmsx3YxAfVPk6OALrI8xqWaFp.aq0rt0o1QWKdpTTjxY9/RfUkB3.
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    lock_passwd: false
+    groups: [sudo, docker]
+    chpasswd:
+      expire: False
+    environment:
+      LANG: zh_CN.UTF-8
+      LANGUAGE: zh_CN:zh
+      LC_TIME: en_US.UTF-8
+      LC_PAPER: en_US.UTF-8
+      LC_NAME: en_US.UTF-8
+      LC_ADDRESS: en_US.UTF-8
+      LC_TELEPHONE: en_US.UTF-8
+      LC_MEASUREMENT: en_US.UTF-8
+      LC_IDENTIFICATION: en_US.UTF-8
+      LC_NUMERIC: en_US.UTF-8
+      LC_MONETARY: en_US.UTF-8
+
+# 系统配置文件
+write_files:
+  - path: /etc/environment
+    permissions: '0644'
+    content: |
+      LANG=zh_CN.UTF-8
+      LANGUAGE=zh_CN:zh
+      LC_TIME=en_US.UTF-8
+      LC_PAPER=en_US.UTF-8
+      LC_NAME=en_US.UTF-8
+      LC_ADDRESS=en_US.UTF-8
+      LC_TELEPHONE=en_US.UTF-8
+      LC_MEASUREMENT=en_US.UTF-8
+      LC_IDENTIFICATION=en_US.UTF-8
+      LC_NUMERIC=en_US.UTF-8
+      LC_MONETARY=en_US.UTF-8
+      PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin"
+  - path: /etc/profile.d/terminal.sh
+    permissions: '0644'
+    content: |
+      export TERM=linux
+      export DEBIAN_FRONTEND=noninteractive
+  - path: /etc/locale.gen
+    permissions: '0644'
+    content: |
+      zh_CN.UTF-8 UTF-8
+      en_US.UTF-8 UTF-8
+  - path: /etc/default/locale
+    permissions: '0644'
+    content: |
+      LANG=zh_CN.UTF-8
+      LANGUAGE=zh_CN:zh
+      LC_NUMERIC="C.UTF-8"
+      LC_TIME="C.UTF-8"
+      LC_MONETARY="C.UTF-8"
+      LC_PAPER="C.UTF-8"
+      LC_IDENTIFICATION="C.UTF-8"
+      LC_NAME="C.UTF-8"
+      LC_ADDRESS="C.UTF-8"
+      LC_TELEPHONE="C.UTF-8"
+      LC_MEASUREMENT="C.UTF-8"
+      LC_NAME="C.UTF-8"
+  - path: /etc/docker/daemon.json
+    permissions: '0644'
+    content: |
+      {
+        "registry-mirrors": [
+            "https://docker.1ms.run",
+            "https://docker.xuanyuan.me",
+            "https://dockerhub.timeweb.cloud",
+            "http://mirrors.ustc.edu.cn/",
+            "http://mirror.azure.cn/",
+            "https://docker.m.daocloud.io"
+        ]
+      }
+
+# APT源配置
+apt:
+  primary:
+    - arches: [default]
+      uri: https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports/
+  
+  sources_list: |
+    Types: deb
+    URIs: https://mirrors.tuna.tsinghua.edu.cn/ubuntu-ports
+    Suites: noble noble-updates noble-backports
+    Components: main restricted universe multiverse
+
+# 更新和安装软件包
+package_update: true
+package_upgrade: true
+
+# 基础软件包
+packages:
+  - apt-utils
+  - dialog
+  - debconf-utils
+  - software-properties-common
+  - openjdk-21-jre-headless
+  - ca-certificates
+  - snapd
+  - git
+  - git-lfs
+  - curl
+  - wget
+  - axel
+  - unzip
+  - zip
+  - build-essential
+  - cmake
+  - python3
+  - python3-pip
+  - vim
+  - docker.io
+  - docker-buildx
+  - language-pack-zh-hans
+  - language-pack-zh-hans-base
+  - language-pack-gnome-zh-hans
+  - fonts-noto-cjk
+  - fonts-noto-cjk-extra
+
+growpart:
+  mode: auto
+  devices: ['/']
+  ignore_growroot_disabled: false
+
+# 执行命令
+runcmd:
+  # 设置安装环境变量
+  - export TERM=linux
+  - export DEBIAN_FRONTEND=noninteractive
+  - export DEBCONF_NONINTERACTIVE_SEEN=true
+  - echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+  - echo 'debconf debconf/priority select critical' | debconf-set-selections
+
+  # 第1阶段: 系统初始化
+  - set -ex
+  - echo "[Stage 1] System initialization..."
+  - systemctl mask apt-daily.service apt-daily-upgrade.service
+  - systemctl stop apt-daily.timer apt-daily-upgrade.timer
+  # 设置中文环境但保留英文目录名
+  - echo "[Stage 1.1] Configuring Chinese environment..."
+  - locale-gen zh_CN.UTF-8
+  - locale-gen en_US.UTF-8
+  - update-locale LANG=zh_CN.UTF-8
+  - update-locale LANGUAGE=zh_CN:zh
+  
+  # 创建用户目录使用英文名称
+  - echo "[Stage 1.2] Configuring XDG user directories..."
+  - |
+    sudo -u android LANG=en_US.UTF-8 xdg-user-dirs-update --force
+    sudo -u android sh -c 'echo "enabled=false" > /home/android/.config/user-dirs.conf'
+
+# 完成配置
+final_message: |
+  Cloud-init finished!
+  System is ready to use.
+  Login with username: android 

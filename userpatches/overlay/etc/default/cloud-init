@@ -1,0 +1,5 @@
+# 默认情况下启用cloud-init
+CLOUD_INIT_ENABLED=true
+
+# 指定cloud-init配置文件路径
+CLOUD_INIT_CONFIG_LOCATION="/boot/orangepi-user-config" 

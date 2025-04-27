@@ -21,7 +21,7 @@ kernel
 output
 u-boot
 toolchains
-userpatches
+# userpatches
 
 mkimage.sh
 

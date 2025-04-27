@@ -1,0 +1,45 @@
+name: 3588 board Build CI
+
+on:
+  push:
+    branches:
+        - next
+        - master
+  pull_request:
+    branches:
+        - next
+        - master
+  workflow_dispatch:
+  
+
+jobs:
+  build:
+    runs-on: Ubuntu-22.04
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Update submodules
+      run: |
+        git submodule update --init --recursive
+
+    - name: Clean Github Action Host Cache
+      shell: bash
+      run: |
+        rm -rf /opt/hostedtoolcache
+        cd /opt
+        find . -maxdepth 1 -mindepth 1 '!' -path ./containerd '!' -path ./actionarchivecache '!' -path ./runner '!' -path ./runner-cache -exec rm -rf '{}' ';'
+
+    - name: Run build script
+      run: |
+        # sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=kernel KERNEL_CONFIGURE=no
+        sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=image RELEASE=jammy BUILD_MINIMAL=no BUILD_DESKTOP=yes DESKTOP_ENVIRONMENT=gnome DESKTOP_ENVIRONMENT_CONFIG_NAME=base DESKTOP_APPGROUPS_SELECTED=""  KERNEL_CONFIGURE=no
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: kernel-build-artifacts
+        # path: ./output/debs/
+        path: ./output/images/
