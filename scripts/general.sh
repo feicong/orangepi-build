@@ -1560,6 +1560,7 @@ prepare_host()
 			# download external Linaro compiler and missing special dependencies since they are needed for certain sources
 
 		local toolchains=(
+			"ky-toolchain-linux-glibc-x86_64-v1.0.1.tar.xz"
 			"gcc-linaro-aarch64-none-elf-4.8-2013.11_linux.tar.xz"
 			"gcc-linaro-arm-none-eabi-4.8-2014.04_linux.tar.xz"
 			"gcc-linaro-arm-linux-gnueabihf-4.8-2014.04_linux.tar.xz"
@@ -1682,6 +1683,11 @@ download_and_verify()
 
 	if [[ -f ${localdir}/${dirname}/.download-complete ]]; then
 		return
+	fi
+
+	if [[ ${filename} == *ky* ]]; then
+		server="http://www.iplaystore.cn/"
+		remotedir=""
 	fi
 
 	# switch to china mirror if US timeouts
@@ -1870,7 +1876,7 @@ show_checklist_variables ()
 
 install_wiringop()
 {
-	install_deb_chroot "$EXTER/cache/debs/${ARCH}/wiringpi_2.57.deb"
+	install_deb_chroot "$EXTER/cache/debs/${ARCH}/wiringpi-2.58-1.deb"
 	chroot "${SDCARD}" /bin/bash -c "apt-mark hold wiringpi" >> "${DEST}"/${LOG_SUBPATH}/install.log 2>&1
 
 	if [[ ${IGNORE_UPDATES} != yes ]]; then
@@ -1930,7 +1936,6 @@ install_docker() {
 	chroot "${SDCARD}" /bin/bash -c "apt-get update"
 	chroot "${SDCARD}" /bin/bash -c "apt-get install -y -qq docker-ce docker-ce-cli containerd.io"
 	chroot "${SDCARD}" /bin/bash -c "sudo groupadd docker"
-	chroot "${SDCARD}" /bin/bash -c "sudo usermod -aG docker ${OPI_USERNAME}"
 
 	run_on_sdcard "systemctl --no-reload disable docker.service"
 }

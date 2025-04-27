@@ -316,7 +316,7 @@ dpkg_install_debs_chroot()
 		display_alert "Installing" "$(basename $deb_dir)"
 
 		# when building in bulk from remote, lets make sure we have up2date index
-		chroot "${SDCARD}" /bin/bash -c "dpkg -i ${names[*]} " >> "${DEST}"/${LOG_SUBPATH}/install.log 2>&1
+		chroot "${SDCARD}" /bin/bash -c "DEBIAN_FRONTEND=noninteractive dpkg -i ${names[*]} " >> "${DEST}"/${LOG_SUBPATH}/install.log 2>&1
 		[[ $? -ne 0 ]] && exit_with_error "Installation of $(basename $deb_dir) failed" "${BOARD} ${RELEASE} ${BUILD_DESKTOP} ${LINUXFAMILY}"
 		chroot "${SDCARD}" /bin/bash -c "apt-mark hold ${package_names[*]}" >> "${DEST}"/${LOG_SUBPATH}/install.log 2>&1
 	fi

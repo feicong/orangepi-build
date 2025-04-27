@@ -247,6 +247,8 @@ if [[ -z $BOARD ]]; then
 	options+=("orangepicm4"                 "Rockchip  RK3566 quad core 2-8GB RAM GBE eMMC USB3 NvMe WiFi/BT")
 	options+=("orangepi3b"                  "Rockchip  RK3566 quad core 2-8GB RAM GBE eMMC USB3 NvMe WiFi/BT")
 	options+=("orangepirv"                  "Starfive  JH7110 quad core 2-8GB RAM GBE USB3 NvMe WiFi/BT")
+	options+=("orangepirv2"                  "Ky X1 octa core 2-8GB RAM GBE USB3 WiFi/BT NVMe eMMC")
+	#options+=("orangepir2s"                  "Ky X1 octa core 2-8GB RAM 2.5GBE USB3 eMMC")
 	#options+=("orangepir1plus"              "Rockchip  RK3328 quad core 1GB RAM 2xGBE USB2 SPI")
 	#options+=("orangepi3plus"              "Amlogic S905D3 quad core 2/4GB RAM SoC eMMC GBE USB3 SPI WiFi/BT")
 
@@ -460,6 +462,7 @@ if [[ ${IGNORE_UPDATES} != yes ]]; then
 	if [[ "${BOARD}x" =~ orangepi4x|orangepi4-ltsx|orangepi800x && $RELEASE =~ focal|buster|bullseye|bookworm ]]; then
 
 		[[ ${BUILD_OPT} == image ]] && fetch_from_repo "https://github.com/orangepi-xunlong/rk-rootfs-build.git" "${EXTER}/cache/sources/rk-rootfs-build-${RELEASE}" "branch:rk-rootfs-build-${RELEASE}"
+		[[ ${BUILD_OPT} == image ]] && fetch_from_repo "https://github.com/orangepi-xunlong/rk-rootfs-build.git" "${EXTER}/cache/sources/rk35xx_packages" "branch:rk35xx_packages"
 
 	fi
 
@@ -472,6 +475,12 @@ if [[ ${IGNORE_UPDATES} != yes ]]; then
 	if [[ ${BOARDFAMILY} == "rockchip-rk356x" && $RELEASE =~ bullseye|focal|jammy|raspi ]]; then
 
 		[[ ${BUILD_OPT} == image ]] && fetch_from_repo "https://github.com/orangepi-xunlong/rk-rootfs-build.git" "${EXTER}/cache/sources/rk35xx_packages" "branch:rk35xx_packages"
+
+	fi
+
+	if [[ ${BOARDFAMILY} == "ky" && $RELEASE =~ noble ]]; then
+
+		[[ ${BUILD_OPT} == image ]] && fetch_from_repo "https://github.com/orangepi-xunlong/rk-rootfs-build.git" "${EXTER}/cache/sources/ky_packages" "branch:ky_packages"
 
 	fi
 
@@ -502,12 +511,6 @@ if [[ ${IGNORE_UPDATES} != yes ]]; then
 	*build needed tools for the build, host-side*
 	After sources are fetched, build host-side tools needed for the build.
 	BUILD_HOST_TOOLS
-
-	if [[ ${BOARDFAMILY} == "rockchip-rk3588" ]]; then
-		local rkbin_url="https://github.com/orangepi-xunlong/rk-rootfs-build/raw/rkbin/rk35"
-		wget -nc -P ${EXTER}/cache/sources/rkbin-tools/rk35/ ${rkbin_url}/rk3588_bl31_v1.45_20240422.elf
-	fi
-
 fi
 
 for option in $(tr ',' ' ' <<< "$CLEAN_LEVEL"); do

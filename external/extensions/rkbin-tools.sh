@@ -1,5 +1,5 @@
 function fetch_sources_tools__rkbin_tools() {
-	fetch_from_repo "https://github.com/armbian/rkbin" "${EXTER}/cache/sources/rkbin-tools" "branch:master"
+	fetch_from_repo "https://github.com/orangepi-xunlong/rk-rootfs-build" "${EXTER}/cache/sources/rkbin-tools" "branch:rkbin"
 }
 
 function build_host_tools__install_rkbin_tools() {

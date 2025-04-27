@@ -356,6 +356,8 @@ prepare_board() {
 			;;
 		orangepi4a)
 			echo usb_host > /sys/devices/platform/soc@3000000/10.usbc0/otg_role
+			echo 4 1 > /sys/devices/platform/soc@3000000/2020000.nsi-controller/nsi-pmu/hwmon0/port_abs_bwlen
+			echo 4 400 > /sys/devices/platform/soc@3000000/2020000.nsi-controller/nsi-pmu/hwmon0/port_abs_bwl
 			chmod 666 /dev/vipcore
 			tinymix -D 0 23 1
 			tinymix -D 0 26 1
@@ -412,6 +414,19 @@ prepare_board() {
 			media-ctl --set-v4l2 '"imx219 6-0010":0[fmt:SRGGB10_1X10/1920x1080]'
 			/opt/media-ctl-pipeline.sh -d /dev/media0 -i csiphy0 -s ISP0 -a start
 			/opt/ISP/stf_isp_ctrl -m imx219mipi -j 0 -a 1 &
+			;;
+		orangepirv2)
+			rfkill unblock all
+			/usr/bin/brcm_patchram_plus --enable_hci --no2bytes --tosleep 200000 \
+				--baudrate 1500000 --patchram /lib/firmware/BCM4345C5.hcd /dev/ttyS2 &
+			;;
+		orangepir2s)
+			echo ff > /sys/class/net/enP2p1s0/queues/rx-0/rps_cpus
+			echo ff > /sys/class/net/enP1p1s0/queues/rx-0/rps_cpus
+
+			echo 4096 > /sys/class/net/enP2p1s0/queues/rx-0/rps_flow_cnt
+			echo 4096 > /sys/class/net/enP1p1s0/queues/rx-0/rps_flow_cnt
+
 			;;
 
 	esac
