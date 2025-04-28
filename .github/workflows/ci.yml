@@ -57,7 +57,7 @@ jobs:
         sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=desktop KERNEL_CONFIGURE=no RELEASE=jammy DESKTOP_ENVIRONMENT=gnome DESKTOP_ENVIRONMENT_CONFIG_NAME=base DESKTOP_APPGROUPS_SELECTED="" EXPECT_PARAMS="-v -f"
         
         # 检查生成的包
-        ls -la output/debs/jammy/ || true
+        ls -la output/debs/ || true
 
     # 然后构建完整镜像
     - name: Build full image
