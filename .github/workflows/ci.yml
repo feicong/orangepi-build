@@ -48,16 +48,16 @@ jobs:
         echo "CUSTOM_SCRIPT=\"userpatches/customize-image-ci.sh\"" >> userpatches/config-default.conf
         
     # 首先只构建桌面包
-    - name: Build desktop package
-      run: |
-        # 确保使用非交互模式
-        export DEBIAN_FRONTEND=noninteractive
+    # - name: Build desktop package
+    #   run: |
+    #     # 确保使用非交互模式
+    #     export DEBIAN_FRONTEND=noninteractive
         
-        # 先只构建桌面环境包
-        sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=desktop KERNEL_CONFIGURE=no RELEASE=jammy DESKTOP_ENVIRONMENT=gnome DESKTOP_ENVIRONMENT_CONFIG_NAME=base DESKTOP_APPGROUPS_SELECTED="" EXPECT_PARAMS="-v -f"
+    #     # 先只构建桌面环境包
+    #     sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=desktop KERNEL_CONFIGURE=no RELEASE=jammy DESKTOP_ENVIRONMENT=gnome DESKTOP_ENVIRONMENT_CONFIG_NAME=base DESKTOP_APPGROUPS_SELECTED="" EXPECT_PARAMS="-v -f"
         
-        # 检查生成的包
-        ls -la output/debs/ || true
+    #     # 检查生成的包
+    #     ls -la output/debs/ || true
 
     # 然后构建完整镜像
     - name: Build full image
@@ -66,7 +66,7 @@ jobs:
         export DEBIAN_FRONTEND=noninteractive
         
         # 构建完整镜像
-        sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=image RELEASE=jammy BUILD_MINIMAL=no BUILD_DESKTOP=yes DESKTOP_ENVIRONMENT=gnome DESKTOP_ENVIRONMENT_CONFIG_NAME=base DESKTOP_APPGROUPS_SELECTED="" KERNEL_CONFIGURE=no EXPECT_PARAMS="-v -f"
+        sudo ./build.sh BOARD=orangepi5max BRANCH=legacy BUILD_OPT=image RELEASE=jammy BUILD_MINIMAL=no BUILD_DESKTOP=no DESKTOP_ENVIRONMENT=gnome DESKTOP_ENVIRONMENT_CONFIG_NAME=base DESKTOP_APPGROUPS_SELECTED="" KERNEL_CONFIGURE=no EXPECT_PARAMS="-v -f"
         
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
